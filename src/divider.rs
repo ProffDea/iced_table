@@ -114,17 +114,17 @@ where
         })
     }
 
-    fn on_event(
+    fn update(
         &mut self,
         tree: &mut widget::Tree,
-        event: event::Event,
+        event: &event::Event,
         layout: Layout<'_>,
         cursor: Cursor,
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
-    ) -> event::Status {
+    ) {
         let state = tree.state.downcast_mut::<State>();
 
         let divider_hover_bounds = self.divider_hover_bounds(layout.bounds());
@@ -136,20 +136,20 @@ where
                 mouse::Event::ButtonPressed(mouse::Button::Left) => {
                     if let Some(origin) = cursor.position_over(divider_hover_bounds) {
                         state.drag_origin = Some(origin);
-                        return event::Status::Captured;
+                        shell.capture_event();
                     }
                 }
                 mouse::Event::ButtonReleased(mouse::Button::Left) => {
                     if state.drag_origin.take().is_some() {
                         shell.publish(self.on_release.clone());
-                        return event::Status::Captured;
+                        shell.capture_event();
                     }
                 }
                 mouse::Event::CursorMoved { .. } => {
                     if let Some(position) = cursor.position() {
                         if let Some(origin) = state.drag_origin {
                             shell.publish((self.on_drag)((position - origin).x));
-                            return event::Status::Captured;
+                            shell.capture_event();
                         }
                     }
                 }
@@ -157,7 +157,7 @@ where
             }
         }
 
-        self.content.as_widget_mut().on_event(
+        self.content.as_widget_mut().update(
             &mut tree.children[0],
             event,
             layout.children().next().unwrap(),
@@ -166,7 +166,11 @@ where
             clipboard,
             shell,
             viewport,
-        )
+        );
+        
+		if state.is_divider_hovered {
+			shell.request_redraw();
+		}
     }
 
     fn mouse_interaction(

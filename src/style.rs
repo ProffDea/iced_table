@@ -227,18 +227,18 @@ pub(crate) mod wrapper {
                 .operate(state, layout, renderer, operation)
         }
 
-        fn on_event(
+        fn update(
             &mut self,
             state: &mut iced_core::widget::Tree,
-            event: iced_core::Event,
+            event: &iced_core::Event,
             layout: iced_core::Layout<'_>,
             cursor: Cursor,
             renderer: &Renderer,
             clipboard: &mut dyn iced_core::Clipboard,
             shell: &mut iced_core::Shell<'_, Message>,
             viewport: &iced_core::Rectangle,
-        ) -> iced_core::event::Status {
-            self.content.as_widget_mut().on_event(
+        ) {
+            self.content.as_widget_mut().update(
                 state, event, layout, cursor, renderer, clipboard, shell, viewport,
             )
         }
