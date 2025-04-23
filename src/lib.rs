@@ -6,13 +6,21 @@ pub use table::{table, Table};
 mod divider;
 mod style;
 
+/// Support providing custom widget IDs for [`Row`]
+pub trait WithId {
+	/// Return the widget ID of the [`Row`]
+	fn id(&self) -> iced_core::widget::Id;
+}
+
 pub mod table {
     //! Display rows of data into columns
-    use iced_core::{Element, Length, Padding};
+    use iced_core::{Element, Length, Padding, Point, Rectangle};
+    use iced_drop::droppable;
     use iced_widget::{column, container, row, scrollable, Space};
 
     use super::divider::Divider;
     use super::style;
+    use super::WithId;
 
     /// Creates a new [`Table`] with the provided [`Column`] definitions
     /// and [`Row`](Column::Row) data.
@@ -39,6 +47,8 @@ pub mod table {
             on_sync,
             on_column_drag: None,
             on_column_release: None,
+            on_row_click: None,
+            on_row_drop: None,
             min_width: 0.0,
             min_column_width: 4.0,
             divider_width: 2.0,
@@ -94,6 +104,8 @@ pub mod table {
         on_sync: fn(scrollable::AbsoluteOffset) -> Message,
         on_column_drag: Option<fn(usize, f32) -> Message>,
         on_column_release: Option<Message>,
+        on_row_click: Option<fn(usize) -> Message>,
+        on_row_drop: Option<fn(Point, Rectangle) -> Message>,
         min_width: f32,
         min_column_width: f32,
         divider_width: f32,
@@ -124,6 +136,22 @@ pub mod table {
                 on_column_release: Some(on_release),
                 ..self
             }
+        }
+
+        /// Sets the message that will be produced when a [`Row`] is clicked.
+        pub fn on_row_click(self, on_click: fn(usize) -> Message) -> Self {
+        	Self {
+        		on_row_click: Some(on_click),
+        		..self
+        	}
+        }
+
+        /// Sets the message that will be produced when a [`Row`] is dropped after dragging.
+        pub fn on_row_drop(self, on_drop: fn(Point, Rectangle) -> Message) -> Self {
+        	Self {
+        		on_row_drop: Some(on_drop),
+        		..self
+        	}
         }
 
         /// Show the footer returned by [`Column::footer`].
@@ -186,6 +214,7 @@ pub mod table {
         Renderer: iced_core::Renderer + 'a,
         Theme: style::Catalog + container::Catalog + scrollable::Catalog + 'a,
         Column: self::Column<'a, Message, Theme, Renderer, Row = Row>,
+        Row: WithId,
         Message: 'a + Clone,
     {
         fn from(table: Table<'a, Column, Row, Message, Theme>) -> Self {
@@ -198,6 +227,8 @@ pub mod table {
                 on_sync,
                 on_column_drag,
                 on_column_release,
+                on_row_click,
+                on_row_drop,
                 min_width,
                 min_column_width,
                 divider_width,
@@ -238,7 +269,7 @@ pub mod table {
             });
 
             let body = scrollable(column(rows.iter().enumerate().map(|(row_index, _row)| {
-                style::wrapper::row(
+                let content = style::wrapper::row(
                     row(columns
                         .iter()
                         .enumerate()
@@ -256,8 +287,26 @@ pub mod table {
                         .chain(dummy_container(columns, min_width, min_column_width))),
                     style.clone(),
                     row_index,
-                )
-                .into()
+                );
+
+                let Some(on_row_click) = on_row_click else {
+                	let Some(on_row_drop) = on_row_drop else {
+                		return content
+                	};
+                	return droppable(content)
+                		.id(_row.id())
+                		.drag_hide(true)
+                		.on_drop(on_row_drop)
+                		.into();
+                };
+                let drop = droppable(content)
+                	.id(_row.id())
+                	.drag_hide(true)
+                	.on_click((on_row_click)(row_index));
+                let Some(on_row_drop) = on_row_drop else {
+                	return drop.into();
+                };
+                drop.on_drop(on_row_drop).into()               
             })))
             .id(body)
             .on_scroll(move |viewport| {

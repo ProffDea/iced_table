@@ -22,6 +22,7 @@ __docs = ["iced_widget/lazy"]
 [dependencies]
 iced_core = { git = "https://github.com/iced-rs/iced", branch = "master" }
 iced_widget = { git = "https://github.com/iced-rs/iced", branch = "master" }
+iced_drop = { git = "https://github.com/ProffDea/iced_drop.git", branch = "dev" }
 
 [package.metadata.docs.rs]
 all-features = true
