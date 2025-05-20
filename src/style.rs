@@ -259,13 +259,14 @@ pub(crate) mod wrapper {
         fn overlay<'b>(
             &'b mut self,
             state: &'b mut iced_core::widget::Tree,
-            layout: iced_core::Layout<'_>,
+            layout: iced_core::Layout<'b>,
             renderer: &Renderer,
+            viewport: &iced_core::Rectangle,
             translation: Vector,
         ) -> Option<iced_core::overlay::Element<'b, Message, Theme, Renderer>> {
             self.content
                 .as_widget_mut()
-                .overlay(state, layout, renderer, translation)
+                .overlay(state, layout, renderer, viewport, translation)
         }
     }
 
